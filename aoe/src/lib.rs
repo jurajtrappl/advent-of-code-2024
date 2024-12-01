@@ -17,3 +17,32 @@ pub fn count_occurrences<T: Hash + Eq>(items: &[T]) -> HashMap<&T, usize> {
     }
     counts
 }
+
+pub fn parse_to_2dvec<T>(input: &str) -> Vec<Vec<T>>
+where
+    T: std::str::FromStr,
+    T::Err: std::fmt::Debug,
+{
+    input
+        .lines()
+        .map(|l| {
+            l.trim()
+                .split_whitespace()
+                .map(|n| n.parse().unwrap())
+                .collect()
+        })
+        .collect()
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn test_parse_input_uint() {
+        assert_eq!(vec![vec![1u8, 2u8], vec![3u8, 4u8]], super::parse_to_2dvec::<u8>("1 2\n3 4"));
+    }
+
+    #[test]
+    fn test_parse_str() {
+        assert_eq!(vec![vec!["1", "2"], vec!["3", "4"]], super::parse_to_2dvec::<String>("1 2\n3 4"));
+    }
+}
