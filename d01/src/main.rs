@@ -54,7 +54,7 @@ fn main() {
 #[cfg(test)]
 mod tests {
     #[test]
-    fn test_solve_example() {
+    fn test_solve_example_fst_part() {
         let input = aoe::read_input_file("example_input").unwrap();
         assert_eq!(11, super::solve(&input, super::find_distance));
     }
@@ -63,6 +63,12 @@ mod tests {
     fn test_solve_fst_part() {
         let input = aoe::read_input_file("input").unwrap();
         assert_eq!(2000468, super::solve(&input, super::find_distance));
+    }
+
+    #[test]
+    fn test_solve_example_snd_part() {
+        let input = aoe::read_input_file("example_input").unwrap();
+        assert_eq!(31, super::solve(&input, super::calculate_similarity_score));
     }
 
     #[test]
