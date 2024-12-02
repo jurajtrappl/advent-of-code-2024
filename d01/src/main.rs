@@ -6,8 +6,6 @@
     unused_results
 )]
 
-use aoe::{count_occurrences, parse_to_2dvec, read_input_file};
-
 fn split_location_lists(locations: &Vec<Vec<i32>>) -> (Vec<i32>, Vec<i32>) {
     let (mut fst, mut snd): (Vec<i32>, Vec<i32>) = locations
         .iter()
@@ -32,20 +30,20 @@ fn find_distance(fst_locations: &[i32], snd_locations: &[i32]) -> i32 {
 }
 
 fn calculate_similarity_score(fst_locations: &[i32], snd_locations: &[i32]) -> i32 {
-    let counter = count_occurrences(snd_locations);
+    let counter = aoe::count_occurrences(snd_locations);
     fst_locations.iter().fold(0, |acc, elem| {
         acc + elem * counter.get(elem).map_or(0, |&count| count as i32)
     })
 }
 
 fn solve(input: &str, op: fn(&[i32], &[i32]) -> i32) -> i32 {
-    let locations: Vec<Vec<i32>> = parse_to_2dvec(input);
+    let locations: Vec<Vec<i32>> = aoe::parse_to_2dvec(input);
     let (fst_locations, snd_locations): (Vec<i32>, Vec<i32>) = split_location_lists(&locations);
     op(&fst_locations, &snd_locations)
 }
 
 fn main() {
-    let input = read_input_file("input").unwrap();
+    let input = aoe::read_input_file("input").unwrap();
     println!(
         "First part: {}. Second part: {}",
         solve(&input, find_distance),
@@ -55,23 +53,21 @@ fn main() {
 
 #[cfg(test)]
 mod tests {
-    use crate::{calculate_similarity_score, find_distance, read_input_file, solve};
-
     #[test]
     fn test_solve_example() {
-        let input = read_input_file("example_input").unwrap();
-        assert_eq!(11, solve(&input, find_distance));
+        let input = aoe::read_input_file("example_input").unwrap();
+        assert_eq!(11, super::solve(&input, super::find_distance));
     }
 
     #[test]
     fn test_solve_fst_part() {
-        let input = read_input_file("input").unwrap();
-        assert_eq!(2000468, solve(&input, find_distance));
+        let input = aoe::read_input_file("input").unwrap();
+        assert_eq!(2000468, super::solve(&input, super::find_distance));
     }
 
     #[test]
     fn test_solve_snd_part() {
-        let input = read_input_file("input").unwrap();
-        assert_eq!(18567089, solve(&input, calculate_similarity_score));
+        let input = aoe::read_input_file("input").unwrap();
+        assert_eq!(18567089, super::solve(&input, super::calculate_similarity_score));
     }
 }
