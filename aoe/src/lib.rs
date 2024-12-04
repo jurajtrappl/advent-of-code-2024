@@ -34,6 +34,18 @@ where
         .collect()
 }
 
+pub fn transpose<T>(original: &Vec<Vec<T>>) -> Vec<Vec<T>>
+where
+    T: Clone,
+{
+    let rows = original.len();
+    let cols = original[0].len();
+
+    (0..cols)
+        .map(|col| (0..rows).map(|row| original[row][col].clone()).collect())
+        .collect()
+}
+
 #[cfg(test)]
 mod tests {
     #[test]
@@ -44,5 +56,13 @@ mod tests {
     #[test]
     fn test_parse_str() {
         assert_eq!(vec![vec!["1", "2"], vec!["3", "4"]], super::parse_to_2dvec::<String>("1 2\n3 4"));
+    }
+
+    #[test]
+    fn test_transpose() {
+        assert_eq!(
+            vec![vec![1, 4, 7], vec![2, 5, 8], vec![3, 6, 9]],
+            super::transpose(&vec![vec![1, 2, 3], vec![4, 5, 6], vec![7, 8, 9]])
+        )
     }
 }
