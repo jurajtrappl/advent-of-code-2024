@@ -9,153 +9,85 @@
 use std::collections::{HashMap, HashSet, VecDeque};
 
 fn topological_sort(graph: &HashMap<u32, HashSet<u32>>, nodes: &[u32]) -> Option<Vec<u32>> {
-    let mut in_degree: HashMap<u32, usize> = HashMap::new();
-    let nodes: HashSet<u32> = nodes.iter().cloned().collect();
-
-    for &node in &nodes {
-        _ = in_degree.insert(node, 0);
-    }
-
-    for &node in &nodes {
-        if let Some(edges) = graph.get(&node) {
-            for &dest in edges {
-                if nodes.contains(&dest) {
-                    *in_degree.get_mut(&dest).unwrap() += 1;
-                }
-            }
+    let mut in_degree: HashMap<u32, usize> = nodes.iter().map(|&n| (n, 0)).collect();
+    
+    for edges in graph.values() {
+        for &dest in edges {
+            *in_degree.get_mut(&dest).unwrap() += 1;
         }
     }
-
+    
     let mut queue: VecDeque<u32> = in_degree
         .iter()
-        .filter(|&(_, &degree)| degree == 0)
-        .map(|(&node, _)| node)
+        .filter(|&(_, &deg)| deg == 0)
+        .map(|(&n, _)| n)
         .collect();
-
-    let mut result = Vec::new();
-
+        
+    let mut sorted = Vec::new();
+    
     while let Some(node) = queue.pop_front() {
-        result.push(node);
-
+        sorted.push(node);
+        
         if let Some(edges) = graph.get(&node) {
             for &dest in edges {
-                if nodes.contains(&dest) {
-                    let degree = in_degree.get_mut(&dest).unwrap();
-                    *degree -= 1;
-                    if *degree == 0 {
-                        queue.push_back(dest);
-                    }
+                let deg = in_degree.get_mut(&dest).unwrap();
+                *deg -= 1;
+                if *deg == 0 {
+                    queue.push_back(dest);
                 }
             }
         }
     }
-
-    if result.len() == nodes.len() {
-        Some(result)
-    } else {
-        None // cycle
-    }
+    
+    (sorted.len() == nodes.len()).then_some(sorted)
 }
 
-fn build_local_graph(rule: &[u32], number_pairs: &[(u32, u32)]) -> HashMap<u32, HashSet<u32>> {
-    let mut graph: HashMap<u32, HashSet<u32>> = HashMap::new();
-
-    for &num in rule {
-        _ = graph.insert(num, HashSet::new());
-    }
-
-    for &(x, y) in number_pairs {
-        if rule.contains(&x) && rule.contains(&y) {
+fn build_graph(nodes: &[u32], pairs: &[(u32, u32)]) -> HashMap<u32, HashSet<u32>> {
+    let mut graph: HashMap<u32, HashSet<u32>> = nodes.iter().map(|&n| (n, HashSet::new())).collect();
+    
+    for &(x, y) in pairs {
+        if nodes.contains(&x) && nodes.contains(&y) {
             _ = graph.get_mut(&x).unwrap().insert(y);
         }
     }
-
+    
     graph
-}
-
-fn check_rule(rule: &[u32], number_pairs: &[(u32, u32)]) -> Option<Vec<u32>> {
-    let local_graph = build_local_graph(rule, number_pairs);
-    topological_sort(&local_graph, rule)
 }
 
 fn main() {
     let input = aoe::read_input_file("input").unwrap();
     let sections: Vec<&str> = input.split("\n\n").collect();
 
-    let number_pairs: Vec<(u32, u32)> = sections[0]
-        .split("\n")
+    let pairs: Vec<(u32, u32)> = sections[0]
+        .split('\n')
         .map(|p| {
-            let nums: Vec<u32> = p.split("|").map(|n| n.parse().unwrap()).collect();
+            let nums: Vec<u32> = p.split('|').map(|n| n.parse().unwrap()).collect();
             (nums[0], nums[1])
         })
         .collect();
-    let update_rules: Vec<Vec<u32>> = sections[1]
-        .split("\n")
-        .map(|r| r.split(",").map(|n| n.parse().unwrap()).collect())
+        
+    let rules: Vec<Vec<u32>> = sections[1]
+        .split('\n')
+        .map(|r| r.split(',').map(|n| n.parse().unwrap()).collect())
         .collect();
 
-    let mut must_come_before: HashMap<u32, Vec<u32>> = HashMap::new();
-    let mut must_come_after: HashMap<u32, Vec<u32>> = HashMap::new();
-
-    for (x, y) in number_pairs.iter() {
-        must_come_before.entry(*x).or_insert(Vec::new()).push(*y);
-        must_come_after.entry(*y).or_insert(Vec::new()).push(*x);
-    }
-
-    // the first part
-    let mut correct_rules = Vec::new();
-    for rule in update_rules.iter() {
-        let mut is_correct = true;
-
-        for i in 0..rule.len() {
-            let current = &rule[i];
-            let numbers_before = &rule[..i];
-            let numbers_after = &rule[i + 1..];
-
-            if let Some(required_after) = must_come_before.get(current) {
-                for later_num in numbers_after {
-                    if !required_after.contains(later_num) {
-                        is_correct = false;
-                        break;
-                    }
-                }
-            }
-
-            if let Some(required_before) = must_come_after.get(current) {
-                for earlier_num in numbers_before {
-                    if !required_before.contains(earlier_num) {
-                        is_correct = false;
-                        break;
-                    }
-                }
-            }
-
-            if !is_correct {
-                break;
-            }
-        }
-
-        if is_correct {
-            correct_rules.push(rule);
-        }
-    }
-
-    let middle_page_number: u32 = correct_rules.iter().map(|r| r[r.len() / 2]).sum();
-    println!("First part: {}", middle_page_number);
-
-    // the second part
-    let incorrect_rules: Vec<&Vec<u32>> = update_rules
+    let valid_rules: Vec<&Vec<u32>> = rules
         .iter()
-        .filter(|r| !correct_rules.contains(r))
+        .filter(|&rule| {
+            let graph = build_graph(rule, &pairs);
+            matches!(topological_sort(&graph, rule), Some(sorted) if &sorted == rule)
+        })
         .collect();
-    let mut corrected_rules: Vec<Vec<u32>> = Vec::new();
-    for rule in incorrect_rules {
-        let result = check_rule(rule, &number_pairs);
-        if let Some(sorted) = result {
-            corrected_rules.push(sorted);
-        }
-    }
 
-    let middle_page_number2: u32 = corrected_rules.iter().map(|r| r[r.len() / 2]).sum();
-    println!("Second part: {}", middle_page_number2);
+    let corrected: Vec<Vec<u32>> = rules
+        .iter()
+        .filter(|r| !valid_rules.contains(r))
+        .filter_map(|rule| {
+            let graph = build_graph(rule, &pairs);
+            topological_sort(&graph, rule)
+        })
+        .collect();
+        
+    println!("First part: {}", valid_rules.iter().map(|r| r[r.len() / 2]).sum::<u32>());
+    println!("Second part: {}", corrected.iter().map(|r| r[r.len() / 2]).sum::<u32>());
 }
