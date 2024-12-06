@@ -5,3 +5,4 @@ edition = "2021"
 
 [dependencies]
 aoe = { path = "../aoe" }
+rayon = "1.10.0"
