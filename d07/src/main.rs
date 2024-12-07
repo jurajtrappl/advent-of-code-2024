@@ -5,7 +5,6 @@
     unused_qualifications,
     unused_results
 )]
-
 use rayon::prelude::*;
 
 enum Op {
