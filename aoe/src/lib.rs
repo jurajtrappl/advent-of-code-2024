@@ -46,6 +46,10 @@ where
         .collect()
 }
 
+pub fn is_out_of_bounds(pos: (i32, i32), rows: i32, cols: i32) -> bool {
+    pos.0 < 0 || pos.0 >= rows || pos.1 < 0 || pos.1 >= cols
+}
+
 #[cfg(test)]
 mod tests {
     #[test]

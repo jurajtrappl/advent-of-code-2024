@@ -33,10 +33,6 @@ fn get_antenna_pairs(locations: &Vec<(i32, i32)>) -> Vec<((i32, i32), (i32, i32)
     pairs
 }
 
-fn is_out_of_bounds(pos: (i32, i32), rows: i32, cols: i32) -> bool {
-    pos.0 < 0 || pos.0 >= rows || pos.1 < 0 || pos.1 >= cols
-}
-
 fn main() {
     let input = aoe::read_input_file("input").unwrap();
     let city_map: Vec<Vec<char>> = input.split("\n").map(|l| l.chars().collect()).collect();
@@ -61,44 +57,36 @@ fn main() {
     for frequency in antenna_locations.keys() {
         let locations = get_antenna_pairs(&antenna_locations.get(frequency).unwrap());
         for (fst, snd) in locations.iter() {
+            // the first part
             let fst_to_snd = snd.sub(fst);
             let snd_to_fst = fst.sub(snd);
 
-            // the first part
-            let new_fst = fst.add(&fst_to_snd).add(&fst_to_snd);
-            let new_snd = snd.add(&snd_to_fst).add(&snd_to_fst);
-
-            if !is_out_of_bounds(new_fst, rows, cols) {
-                _ = unique_locations.insert(new_fst);
-                
-            }
-
-            if !is_out_of_bounds(new_snd, rows, cols) {
-                _ = unique_locations.insert(new_snd);
-            }
+            _ = unique_locations.insert(fst.add(&fst_to_snd).add(&fst_to_snd));
+            _ = unique_locations.insert(snd.add(&snd_to_fst).add(&snd_to_fst));
 
             // the second part
             let mut curr_fst = *fst;
             let mut curr_snd = *snd;
 
-            _ = unique_locations_2.insert(*fst);
-            _ = unique_locations_2.insert(*snd);
-
-            for _ in 0..100 {
+            while !aoe::is_out_of_bounds(curr_fst, rows, cols) {
+                _ = unique_locations_2.insert(curr_fst);
                 curr_fst = curr_fst.add(&fst_to_snd);
-                if !is_out_of_bounds(curr_fst, rows, cols) {
-                    _ = unique_locations_2.insert(curr_fst);
-                }
             }
 
-            for _ in 0..100 {
+            while !aoe::is_out_of_bounds(curr_snd, rows, cols) {
+                _ = unique_locations_2.insert(curr_snd);
                 curr_snd = curr_snd.add(&snd_to_fst);
-                if !is_out_of_bounds(curr_snd, rows, cols) {
-                    _ = unique_locations_2.insert(curr_snd);
-                }
             }
         }
     }
 
-    println!("First part: {}, Second part: {}", unique_locations.len(), unique_locations_2.len());
+    unique_locations = unique_locations
+        .into_iter()
+        .filter(|loc| !aoe::is_out_of_bounds(*loc, rows, cols))
+        .collect();
+    println!(
+        "First part: {}, Second part: {}",
+        unique_locations.len(),
+        unique_locations_2.len()
+    );
 }

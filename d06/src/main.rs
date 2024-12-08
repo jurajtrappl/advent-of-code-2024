@@ -52,10 +52,6 @@ fn find_start(grid: &Vec<Vec<char>>) -> Option<(usize, usize)> {
     None
 }
 
-fn is_out_of_bounds(pos: (i32, i32), rows: i32, cols: i32) -> bool {
-    pos.0 < 0 || pos.0 >= rows || pos.1 < 0 || pos.1 >= cols
-}
-
 fn count_visited_positions(grid: &Vec<Vec<char>>) -> i32 {
     let rows = grid.len() as i32;
     let cols = grid[0].len() as i32;
@@ -74,7 +70,7 @@ fn count_visited_positions(grid: &Vec<Vec<char>>) -> i32 {
         let (dx, dy) = current_direction.forward_vector();
         let next_position = (current_position.0 + dx, current_position.1 + dy);
 
-        if is_out_of_bounds(next_position, rows, cols) {
+        if aoe::is_out_of_bounds(next_position, rows, cols) {
             break;
         }
 
@@ -111,7 +107,7 @@ fn check_for_true_cycles(grid: &Vec<Vec<char>>) -> bool {
             return true;
         }
 
-        if is_out_of_bounds(next_position, rows, cols) {
+        if aoe::is_out_of_bounds(next_position, rows, cols) {
             break;
         }
 
