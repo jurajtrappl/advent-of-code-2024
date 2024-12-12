@@ -6,9 +6,11 @@
     unused_results
 )]
 
+type Position = (usize, usize);
+
 use std::collections::{HashMap, HashSet, VecDeque};
 
-fn find_letter_groups(grid: &Vec<Vec<char>>) -> Vec<HashSet<(usize, usize)>> {
+fn find_letter_groups(grid: &Vec<Vec<char>>) -> Vec<HashSet<Position>> {
     let height = grid.len();
     let width = grid[0].len();
     let mut visited = HashSet::new();
@@ -55,7 +57,7 @@ fn find_letter_groups(grid: &Vec<Vec<char>>) -> Vec<HashSet<(usize, usize)>> {
     groups
 }
 
-fn count_perimeter(positions: &HashSet<(usize, usize)>) -> HashMap<(usize, usize), usize> {
+fn count_perimeter(positions: &HashSet<Position>) -> HashMap<Position, usize> {
     let pos_set: HashSet<_> = positions.iter().copied().collect();
     positions.iter().copied()
         .map(|(row, col)| {
