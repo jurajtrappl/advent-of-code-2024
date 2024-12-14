@@ -6,4 +6,4 @@ edition = "2021"
 [dependencies]
 num = "0.4.3"
 aoe = { path = "../aoe" }
-rayon = "1.10.0"
+extended-euclidean-algorithm = "0.1.1"

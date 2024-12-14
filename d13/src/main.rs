@@ -1,20 +1,29 @@
-use rayon::prelude::*;
+#![warn(
+    bad_style,
+    unused,
+    unused_import_braces,
+    unused_qualifications,
+    unused_results
+)]
+
 use std::collections::{HashMap, VecDeque};
+
+const EPSILON: f64 = 1e-10;
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 struct State {
-    x_remaining: i128,
-    y_remaining: i128,
+    x_remaining: i64,
+    y_remaining: i64,
 }
 
 #[derive(Clone, Debug)]
 struct Solution {
-    a_presses: i128,
-    b_presses: i128,
-    total_cost: i128,
+    a_presses: i64,
+    b_presses: i64,
+    total_cost: i64,
 }
 
-fn parse_button_data(input: &str) -> Vec<(i128, i128, i128, i128, i128, i128)> {
+fn parse_button_data(input: &str) -> Vec<(i64, i64, i64, i64, i64, i64)> {
     let mut result = Vec::new();
     let mut lines = input.lines();
 
@@ -36,7 +45,7 @@ fn parse_button_data(input: &str) -> Vec<(i128, i128, i128, i128, i128, i128)> {
     result
 }
 
-fn parse_button_line(line: &str, prefix: &str) -> Option<(i128, i128)> {
+fn parse_button_line(line: &str, prefix: &str) -> Option<(i64, i64)> {
     if !line.starts_with(prefix) {
         return None;
     }
@@ -51,20 +60,20 @@ fn parse_button_line(line: &str, prefix: &str) -> Option<(i128, i128)> {
         .get(0)?
         .trim()
         .strip_prefix("X+")?
-        .parse::<i128>()
+        .parse::<i64>()
         .ok()?;
 
     let y = coords
         .get(1)?
         .trim()
         .strip_prefix("Y+")?
-        .parse::<i128>()
+        .parse::<i64>()
         .ok()?;
 
     Some((x, y))
 }
 
-fn parse_prize_line(line: &str) -> Option<(i128, i128)> {
+fn parse_prize_line(line: &str) -> Option<(i64, i64)> {
     if !line.starts_with("Prize:") {
         return None;
     }
@@ -79,28 +88,26 @@ fn parse_prize_line(line: &str) -> Option<(i128, i128)> {
         .get(0)?
         .trim()
         .strip_prefix("X=")?
-        .parse::<i128>()
+        .parse::<i64>()
         .ok()?;
 
     let y = coords
         .get(1)?
         .trim()
         .strip_prefix("Y=")?
-        .parse::<i128>()
+        .parse::<i64>()
         .ok()?;
 
     Some((x, y))
 }
 
-fn solve_claw(
-    target_x: i128,
-    target_y: i128,
-    button_a_x: i128,
-    button_a_y: i128,
-    button_b_x: i128,
-    button_b_y: i128,
-    cost_a: i128,
-    cost_b: i128,
+fn solve_claw_fst(
+    target_x: i64,
+    target_y: i64,
+    button_a_x: i64,
+    button_a_y: i64,
+    button_b_x: i64,
+    button_b_y: i64,
 ) -> Option<Solution> {
     let mut queue = VecDeque::new();
     let mut visited = HashMap::new();
@@ -119,7 +126,7 @@ fn solve_claw(
         },
     ));
 
-    visited.insert(initial_state, 0);
+    _ = visited.insert(initial_state, 0);
 
     while let Some((state, current_solution)) = queue.pop_front() {
         if state.x_remaining == 0 && state.y_remaining == 0 {
@@ -136,10 +143,10 @@ fn solve_claw(
                 y_remaining: state.y_remaining - button_a_y,
             };
 
-            let new_cost = current_solution.total_cost + cost_a;
+            let new_cost = current_solution.total_cost + 3;
 
             if !visited.contains_key(&new_state) || visited.get(&new_state).unwrap() > &new_cost {
-                visited.insert(new_state.clone(), new_cost);
+                _ = visited.insert(new_state.clone(), new_cost);
                 queue.push_back((
                     new_state,
                     Solution {
@@ -161,10 +168,10 @@ fn solve_claw(
                 y_remaining: state.y_remaining - button_b_y,
             };
 
-            let new_cost = current_solution.total_cost + cost_b;
+            let new_cost = current_solution.total_cost + 1;
 
             if !visited.contains_key(&new_state) || visited.get(&new_state).unwrap() > &new_cost {
-                visited.insert(new_state.clone(), new_cost);
+                _ = visited.insert(new_state.clone(), new_cost);
                 queue.push_back((
                     new_state,
                     Solution {
@@ -180,21 +187,38 @@ fn solve_claw(
     None
 }
 
+fn solve_claw_snd(t_x: f64, t_y: f64, a_x: f64, a_y: f64, b_x: f64, b_y: f64) -> Option<i64> {
+    // [ a_x b_x ]
+    // [ a_y b_y ]
+
+    let det: f64 = a_x * b_y - b_x * a_y;
+    if det == 0.0 {
+        return None;
+    }
+
+    // cramer's rule
+    let x: f64 = (t_x * b_y - b_x * t_y) / det;
+    let y: f64 = (a_x * t_y - t_x * a_y) / det;
+    if x < 0.0 || y < 0.0 || (x - x.round()).abs() >= EPSILON || (y - y.round()).abs() >= EPSILON {
+        return None;
+    }
+
+    Some((3.0 * x + 1.0 * y) as i64)
+}
+
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let input = aoe::read_input_file("input")?;
     let data = parse_button_data(&input);
 
-    let tokens: i128 = data.par_iter()
+    let tokens_fst: i64 = data.iter()
         .map(|&(a_x, a_y, b_x, b_y, t_x, t_y)| {
-            match solve_claw(
-                t_x, // + 10000000000000,   // to execute the first part, comment out the number after +
-                t_y, // + 10000000000000,   // to execute the first part, comment out the number after +
+            match solve_claw_fst(
+                t_x,
+                t_y,
                 a_x,
                 a_y,
                 b_x,
                 b_y,
-                3,
-                1,
             ) {
                 Some(solution) => solution.total_cost,
                 None => 0,
@@ -202,7 +226,24 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         })
         .sum();
 
-    println!("{}", tokens);
+    let tokens_snd: i64 = data
+        .iter()
+        .map(|&(a_x, a_y, b_x, b_y, t_x, t_y)| {
+            match solve_claw_snd(
+                (t_x + 10000000000000) as f64,
+                (t_y + 10000000000000) as f64,
+                a_x as f64,
+                a_y as f64,
+                b_x as f64,
+                b_y as f64,
+            ) {
+                Some(total_cost) => total_cost,
+                None => 0,
+            }
+        })
+        .sum();
+
+    println!("First part: {}, Second part: {}", tokens_fst, tokens_snd);
 
     Ok(())
 }
