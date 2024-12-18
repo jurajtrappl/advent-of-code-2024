@@ -15,6 +15,7 @@ use nom::{
     IResult,
 };
 use rayon::prelude::*;
+use std::time::Instant;
 
 #[derive(Clone, Debug, PartialEq)]
 struct Registers {
@@ -116,29 +117,52 @@ impl Program {
         output
     }
 
-    fn outputs_itself(&mut self, initial_a: i64) -> bool {
-        let original_a = self.registers.a;
-        self.registers.a = initial_a;
+    fn execute_with_check(&mut self) -> bool {
+        let mut ip = 0;
+        let mut output: Vec<i64> = Vec::with_capacity(self.input.len());
 
-        let output = self.execute();
+        while ip < self.input.len() {
+            let op = self.input[ip];
+            let operand = self.input[ip + 1];
 
-        self.registers.a = original_a;
+            let mut jumped = false;
+
+            match op {
+                0 => self.adv(operand),
+                1 => self.bxl(operand),
+                2 => self.bst(operand),
+                3 => self.jnz(operand, &mut ip, &mut jumped),
+                4 => self.bxc(),
+                5 => {
+                    let op = self.combo_operand(operand).unwrap();
+                    let val = op % 8;
+                    if output.len() >= self.input.len() || (val as u8) != self.input[output.len()] {
+                        return false;
+                    }
+
+                    output.push(val);
+                }
+                6 => self.bdv(operand),
+                7 => self.cdv(operand),
+                _ => unreachable!(),
+            }
+
+            if !jumped {
+                ip += 2;
+            }
+        }
 
         output.len() == self.input.len()
-            && output
-                .iter()
-                .zip(self.input.iter())
-                .all(|(out, inp)| *out as u8 == *inp)
     }
 
-    fn find_lowest_self_output(&self, lower_bound: i64, upper_bound: i64) -> i64 {
+    fn find_lowest_self_output(&self, lower_bound: i64, upper_bound: i64) -> Option<i64> {
         (lower_bound..=upper_bound)
             .into_par_iter()
             .find_first(|&a| {
                 let mut prog = self.clone();
-                prog.outputs_itself(a)
+                prog.registers.a = a;
+                prog.execute_with_check()
             })
-            .expect("No solution found")
     }
 }
 
@@ -187,11 +211,22 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let program_output = program.execute();
 
     let fst_part_result = program_output.iter().join(",");
-    let snd_part_result = program.find_lowest_self_output(125_000_000_000, 150_000_000_000);
-    println!(
-        "First part: {}, Second part: {}",
-        fst_part_result, snd_part_result
-    );
+
+    let now = Instant::now();
+    let snd_part_result = program.find_lowest_self_output(0, 1_000_000_000);
+    match snd_part_result {
+        Some(snd_part_solution) => {
+            println!(
+                "First part: {}, Second part: {}",
+                fst_part_result, snd_part_solution
+            );
+        }
+        None => {
+            let time_elapsed = now.elapsed();
+
+            println!("No solution. Elapsed: {:.2?}", time_elapsed);
+        }
+    }
 
     Ok(())
 }
@@ -229,10 +264,10 @@ mod tests {
     #[test]
     fn test_example_snd_part() {
         let input = aoe::read_input_file("example_input1").unwrap();
-        let (_, mut parsed_program) = parse_input(&input)
+        let (_, parsed_program) = parse_input(&input)
             .map_err(|e| format!("Error: {}", e))
             .unwrap();
-        let lowest_a = parsed_program.find_lowest_self_output(0, 150_000);
+        let lowest_a = parsed_program.find_lowest_self_output(0, 150_000).unwrap();
         assert_eq!(117440, lowest_a);
     }
 }
