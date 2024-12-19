@@ -9,7 +9,7 @@ use nom::{
     bytes::complete::tag,
     character::complete::{alpha1, multispace0, newline},
     combinator::map,
-    multi::separated_list1,
+    multi::{count, separated_list1},
     sequence::{delimited, tuple},
     IResult,
 };
@@ -79,17 +79,48 @@ fn can_make_design(design: &str, patterns: &HashSet<String>, memo: &Mutex<HashMa
     false
 }
 
+fn count_ways(design: &str, patterns: &HashSet<String>, memo: &Mutex<HashMap<String, u64>>) -> u64 {
+    if design.is_empty() {
+        return 1;
+    }
+
+    if let Ok(memo_guard) = memo.lock() {
+        if let Some(&count) = memo_guard.get(design) {
+            return count;
+        }
+    }
+
+    let mut total = 0;
+    for i in 1..=design.len() {
+        let prefix = &design[..i];
+        if patterns.contains(prefix) {
+            total += count_ways(&design[i..], patterns, memo);
+        }
+    }
+
+    if let Ok(mut memo_guard) = memo.lock() {
+        _ = memo_guard.insert(design.to_string(), total);
+    }
+    
+    total
+}
+
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let input = aoe::read_input_file("input")?;
     let (_, onsen) = parse_input(&input).map_err(|e| format!("Error: {}", e))?;
     
     let memo = Mutex::new(HashMap::new());
     
-    let possible_designs_count = onsen.desired_designs
+    let possible_designs: Vec<&String> = onsen.desired_designs
         .par_iter()
         .filter(|design| can_make_design(design, &onsen.patterns, &memo))
-        .count();
+        .collect();
+    let fst_part_result = possible_designs.len();
+
+    let memo1 = Mutex::new(HashMap::new());
+    let snd_part_result: u64 = possible_designs.par_iter().map(|design| count_ways(design, &onsen.patterns, &memo1)).sum();
+
+    println!("First part: {}, Second part: {}", fst_part_result, snd_part_result);
     
-    println!("{}", possible_designs_count);
     Ok(())
 }
