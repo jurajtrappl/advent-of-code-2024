@@ -5,6 +5,7 @@
     unused_qualifications,
     unused_results
 )]
+
 use nom::{
     bytes::complete::tag,
     character::complete::{alpha1, multispace0, newline},
