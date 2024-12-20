@@ -10,7 +10,7 @@ use nom::{
     bytes::complete::tag,
     character::complete::{alpha1, multispace0, newline},
     combinator::map,
-    multi::{count, separated_list1},
+    multi::separated_list1,
     sequence::{delimited, tuple},
     IResult,
 };
