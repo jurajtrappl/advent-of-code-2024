@@ -30,6 +30,45 @@ struct Program {
     input: Vec<u8>,
 }
 
+fn parse_register_line(input: &str) -> IResult<&str, i64> {
+    preceded(
+        tuple((tag("Register"), space0, alpha1, tag(":"), space0)),
+        digit1,
+    )(input)
+    .map(|(remaining, num)| (remaining, num.parse::<i64>().unwrap()))
+}
+
+fn parse_program(input: &str) -> IResult<&str, Vec<u8>> {
+    preceded(
+        tuple((tag("Program:"), space0)),
+        separated_list0(tag(","), digit1),
+    )(input)
+    .map(|(remaining, nums)| {
+        (
+            remaining,
+            nums.iter().map(|n| n.parse::<u8>().unwrap()).collect(),
+        )
+    })
+}
+
+fn parse_input(input: &str) -> IResult<&str, Program> {
+    let (input, a) = parse_register_line(input)?;
+    let (input, _) = newline(input)?;
+    let (input, b) = parse_register_line(input)?;
+    let (input, _) = newline(input)?;
+    let (input, c) = parse_register_line(input)?;
+    let (input, _) = tuple((newline, newline))(input)?;
+    let (input, program_input) = parse_program(input)?;
+
+    Ok((
+        input,
+        Program {
+            registers: Registers { a, b, c },
+            input: program_input,
+        },
+    ))
+}
+
 impl Program {
     fn combo_operand(&self, value: u8) -> Option<i64> {
         match value {
@@ -136,7 +175,7 @@ impl Program {
                 5 => {
                     let op = self.combo_operand(operand).unwrap();
                     let val = op % 8;
-                    if output.len() >= self.input.len() || (val as u8) != self.input[output.len()] {
+                    if output.len() > self.input.len() || (val as u8) != self.input[output.len()] {
                         return false;
                     }
 
@@ -164,45 +203,6 @@ impl Program {
                 prog.execute_with_check()
             })
     }
-}
-
-fn parse_register_line(input: &str) -> IResult<&str, i64> {
-    preceded(
-        tuple((tag("Register"), space0, alpha1, tag(":"), space0)),
-        digit1,
-    )(input)
-    .map(|(remaining, num)| (remaining, num.parse::<i64>().unwrap()))
-}
-
-fn parse_program(input: &str) -> IResult<&str, Vec<u8>> {
-    preceded(
-        tuple((tag("Program:"), space0)),
-        separated_list0(tag(","), digit1),
-    )(input)
-    .map(|(remaining, nums)| {
-        (
-            remaining,
-            nums.iter().map(|n| n.parse::<u8>().unwrap()).collect(),
-        )
-    })
-}
-
-fn parse_input(input: &str) -> IResult<&str, Program> {
-    let (input, a) = parse_register_line(input)?;
-    let (input, _) = newline(input)?;
-    let (input, b) = parse_register_line(input)?;
-    let (input, _) = newline(input)?;
-    let (input, c) = parse_register_line(input)?;
-    let (input, _) = tuple((newline, newline))(input)?;
-    let (input, program_input) = parse_program(input)?;
-
-    Ok((
-        input,
-        Program {
-            registers: Registers { a, b, c },
-            input: program_input,
-        },
-    ))
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
