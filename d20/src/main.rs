@@ -7,6 +7,7 @@
 )]
 
 use pathfinding::prelude::astar;
+use rayon::prelude::*;
 use std::collections::HashSet;
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
@@ -91,31 +92,32 @@ impl Grid {
     }
 
     fn find_cheat_paths(&self, normal_path_cost: i32, max_cheat_distance: i32) -> Vec<i32> {
-        let mut savings = Vec::new();
+        let positions: Vec<(i32, i32)> = (0..self.height)
+            .flat_map(|y| (0..self.width).map(move |x| (x, y)))
+            .collect();
 
-        // For each possible starting position
-        for y1 in 0..self.height {
-            for x1 in 0..self.width {
+        positions
+            .par_iter()
+            .flat_map(|&(x1, y1)| {
                 let start_pos = Pos(x1, y1);
                 if self.walls.contains(&start_pos) {
-                    continue;
+                    return vec![];
                 }
 
-                // For each possible ending position within cheat distance
-                for y2 in 0..self.height {
-                    for x2 in 0..self.width {
+                positions
+                    .iter()
+                    .filter_map(|&(x2, y2)| {
                         let end_pos = Pos(x2, y2);
                         if self.walls.contains(&end_pos) {
-                            continue;
+                            return None;
                         }
 
                         let cheat_distance = (x2 - x1).abs() + (y2 - y1).abs();
                         if cheat_distance > max_cheat_distance {
-                            continue;
+                            return None;
                         }
 
-                        // Find path to cheat start
-                        if let Some((_, cost_to_cheat)) = astar(
+                        let cost_to_cheat = astar(
                             &self.start,
                             |p| {
                                 p.neighbors()
@@ -125,31 +127,32 @@ impl Grid {
                             },
                             |p| (p.0 - start_pos.0).abs() + (p.1 - start_pos.1).abs(),
                             |p| *p == start_pos,
-                        ) {
-                            // Find path from cheat end to finish
-                            if let Some((_, cost_from_cheat)) = astar(
-                                &end_pos,
-                                |p| {
-                                    p.neighbors()
-                                        .into_iter()
-                                        .filter(|pos| self.is_valid(pos))
-                                        .map(|pos| (pos, 1))
-                                },
-                                |p| (p.0 - self.end.0).abs() + (p.1 - self.end.1).abs(),
-                                |p| *p == self.end,
-                            ) {
-                                let total_cost = cost_to_cheat + cheat_distance + cost_from_cheat;
-                                let saved = normal_path_cost - total_cost;
-                                if saved > 0 {
-                                    savings.push(saved);
-                                }
-                            }
+                        )?;
+
+                        let cost_from_cheat = astar(
+                            &end_pos,
+                            |p| {
+                                p.neighbors()
+                                    .into_iter()
+                                    .filter(|pos| self.is_valid(pos))
+                                    .map(|pos| (pos, 1))
+                            },
+                            |p| (p.0 - self.end.0).abs() + (p.1 - self.end.1).abs(),
+                            |p| *p == self.end,
+                        )?;
+
+                        let total_cost = cost_to_cheat.1 + cheat_distance + cost_from_cheat.1;
+                        let saved = normal_path_cost - total_cost;
+                        
+                        if saved > 0 {
+                            Some(saved)
+                        } else {
+                            None
                         }
-                    }
-                }
-            }
-        }
-        savings
+                    })
+                    .collect::<Vec<_>>()
+            })
+            .collect()
     }
 }
 
