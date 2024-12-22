@@ -1,0 +1,8 @@
+[package]
+name = "d20"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+aoe = { path = "../aoe" }
+pathfinding = "4.12.0"
