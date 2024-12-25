@@ -1,0 +1,8 @@
+[package]
+name = "d23"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+aoe = { path = "../aoe" }
+petgraph = "0.6.5"
